@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "@koa/cors": "^2.2.3",
+    "koa": "^2.7.0",
+    "koa-bodyparser": "^4.2.1",
+    "koa-jwt": "^3.5.1",
+    "koa-router": "^7.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1"
+  }
+}
