@@ -11,7 +11,7 @@ const request = axios.create({
 
 // 请求拦截，可以在这里增加 headers 设置等
 request.interceptors.request.use(config => {
-  config.headers['Authorization'] = getToken()
+  config.headers['Authorization'] = 'Bearer ' + getToken()
 
   return config
 }, error => {

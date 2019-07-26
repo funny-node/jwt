@@ -2,18 +2,13 @@ const Koa = require('koa')
 const cors = require('@koa/cors')
 const bodyParser = require('koa-bodyparser')
 const jwt = require('jsonwebtoken')
+const jwtKoa = require('koa-jwt')
 const Router = require('koa-router')
 const secret = 'secret key'
-const expiresIn = 5
+const expiresIn = 500
 
 const app = new Koa()
 const router = new Router()
-
-// 接口白名单
-const whiteUrlList = {
-  'get': ['/about'],
-  'post': ['/login']
-}
 
 // 模拟的合法用户
 const users = [{
@@ -29,49 +24,43 @@ function isValidUser(user) {
 app.use(cors())
 app.use(bodyParser())
 
+// Custom 401 handling if you don't want to expose koa-jwt errors to users
+app.use(function(ctx, next){
+  return next().catch((err) => {
+    if (401 == err.status) {
+      ctx.status = 200
+      ctx.body = {
+        code: 401,
+        msg: 'token error'
+      }
+    } else {
+      throw err
+    }
+  })
+})
+
 /**
  * 中间件解析 authorization 验证是否是登录用户
+ * unless 为接口白名单
  */
-app.use((ctx, next) => {
-  const path = ctx.request.path.toLowerCase()
-  const method = ctx.request.method.toLowerCase()
-
-  // 如果是白名单接口，直接 next
-  if (whiteUrlList[method] && whiteUrlList[method].includes(path)) {
-    next()
-  } else {
-    const token = ctx.request.headers['authorization']
-
-    jwt.verify(token, secret, (error, decode) => {
-      if (error) {
-        // token error
-        ctx.body = {
-          code: 401,
-          msg: 'token error'
-        }
-      } else {
-        ctx.username = decode.username
-        next()
-      }
-    })
-  }
-})
+app.use(jwtKoa({ secret }).unless({ path: [/^\/login/, /^\/about/] }))
 
 // 验证是否已登录，如果未登录，会直接在前一个中间件返回，不会进入这个接口代码逻辑中
 // 因为该接口并不在白名单范围内（也可以设置成该接口为白名单，然后未登录用户在这里返回 401）
 router.get('/authorization', (ctx, next) => {
-  const username = ctx.username
+  const info = ctx.state.user // info 除了 username 还有其他 keys
+  const payload = { username: info.username }
+
+  const token = jwt.sign(payload, secret, {
+    expiresIn
+  })
 
   ctx.body = {
     code: 200,
     msg: 'success',
     data: {
       // 生成新的 token，给 token “续命”
-      token: jwt.sign({
-        username: username
-      }, secret, {
-        expiresIn
-      })
+      token
     }
   }
 })
@@ -85,9 +74,11 @@ router.post('/login', (ctx, next) => {
 
   if (isValidUser({ username, password })) {
     // 登录成功，生成 token
-    const token = jwt.sign({
-      username: username
-    }, secret, {
+    const payload = {
+      username
+    }
+    
+    const token = jwt.sign(payload, secret, {
       expiresIn
     })
 
@@ -119,14 +110,12 @@ router.get('/about', (ctx, next) => {
 
 // 获取用户信息的接口
 router.get('/user', (ctx, next) => {
-  const username = ctx.username
+  const payload = ctx.state.user
 
   ctx.body = {
     code: 200,
     msg: 'success',
-    data: {
-      username
-    }
+    data: payload
   }
 })
 
