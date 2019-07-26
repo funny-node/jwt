@@ -1,5 +1,9 @@
 # jwt 实现权限验证
 
+实际使用可以直接用 koa-jwt 模块，参考 [koa-jwt 分支](https://github.com/vue-demo-space/jwt/tree/koa-jwt)
+
+---
+
 ```bash
 # 前端
 $ npm run dev
